@@ -19,9 +19,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
     internal class PrivateMessagingWindow : XNAWindow, ISwitchable
     {
-        const int ALL_PLAYERS_VIEW_INDEX = 2;
+        const int ALL_PLAYERS_VIEW_INDEX = 3;
         const int FRIEND_LIST_VIEW_INDEX = 1;
         const string FRIEND_LIST_PATH = "Client\\friend_list";
+        const string PLAYER_IGNORE_LIST_PATH = "Client\\ignore_list";
 
         public PrivateMessagingWindow(WindowManager windowManager,
             CnCNetManager connectionManager, GameCollection gameCollection) : base(windowManager)
@@ -145,6 +146,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void WindowManager_GameClosing(object sender, EventArgs e)
         {
             SaveFriendList();
+            SaveIgnoreList();
         }
 
         XNALabel lblPrivateMessaging;
@@ -179,6 +181,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         List<PrivateMessageUser> privateMessageUsers = new List<PrivateMessageUser>();
 
         List<string> friendList;
+        List<string> ignoreList;
 
         PrivateMessageNotificationBox notificationBox;
 
@@ -195,7 +198,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         public override void Initialize()
         {
             Name = "PrivateMessagingWindow";
-            ClientRectangle = new Rectangle(0, 0, 600, 600);
+            ClientRectangle = new Rectangle(0, 0, 760, 600);
             BackgroundTexture = AssetLoader.LoadTextureUncached("privatemessagebg.png");
 
             unknownGameIcon = AssetLoader.TextureFromImage(ClientCore.Properties.Resources.unknownicon);
@@ -223,7 +226,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             tabControl.FontIndex = 1;
             tabControl.AddTab("Messages", 160);
             tabControl.AddTab("Friend List", 160);
+            tabControl.AddTab("Ignore List", 160);
             tabControl.AddTab("All Players", 160);
+
             tabControl.SelectedIndexChanged += TabControl_SelectedIndexChanged;
 
             lblPlayers = new XNALabel(WindowManager);
@@ -289,6 +294,16 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             {
                 Logger.Log("Loading friend list failed!");
                 friendList = new List<string>();
+            }
+
+            try
+            {
+                ignoreList = File.ReadAllLines(ProgramConstants.GamePath + PLAYER_IGNORE_LIST_PATH).ToList();
+            }
+            catch
+            {
+                Logger.Log("Loading ignore list failed!");
+                ignoreList = new List<string>();
             }
 
             tabControl.SelectedTab = 0;
@@ -496,6 +511,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             lbUserList.SelectedIndex = -1;
             lbUserList.TopIndex = 0;
             tbMessageInput.Text = string.Empty;
+            lblMessages.Visible = true;
+            tbMessageInput.Visible = true;
+            lbMessages.Visible = true;
 
             if (tabControl.SelectedTab == 0)
             {
@@ -512,6 +530,27 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     if (iu == null)
                     {
                         iu = new IRCUser(friendName);
+                        isOnline = false;
+                    }
+
+                    AddPlayerToList(iu, isOnline);
+                }
+            }
+            else if (tabControl.SelectedTab == 2)
+            {
+                // Hide boxes not related to Ignore list
+                lblMessages.Visible = false;
+                tbMessageInput.Visible = false;
+                lbMessages.Visible = false;
+
+                foreach (string ignoredUser in ignoreList)
+                {
+                    IRCUser iu = connectionManager.UserList.Find(u => u.Name == ignoredUser);
+                    bool isOnline = true;
+
+                    if (iu == null)
+                    {
+                        iu = new IRCUser(ignoredUser);
                         isOnline = false;
                     }
 
@@ -563,6 +602,22 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             catch (Exception ex)
             {
                 Logger.Log("Saving friend list failed! Error message: " + ex.Message);
+            }
+        }
+
+        public void SaveIgnoreList()
+        {
+            Logger.Log("Saving Ignore list.");
+
+            try
+            {
+                File.Delete(ProgramConstants.GamePath + PLAYER_IGNORE_LIST_PATH);
+                File.WriteAllLines(ProgramConstants.GamePath + PLAYER_IGNORE_LIST_PATH,
+                    ignoreList.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Saving ignore list failed! Error message: " + ex.Message);
             }
         }
 
@@ -638,9 +693,53 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         /// Adds a specified user to the chat ignore list.
         /// </summary>
         /// <param name="name">The name of the user.</param>
-        public void Ignore(string name)
+        /// <param name="ident">The identD of the user. (Optional) </param>
+        public void Ignore(string name, string identD = null)
         {
-            // TODO implement
+            if (identD == null)
+            {
+                ignoreList.Add(name);
+            }
+            else if (identD != null)
+            {
+                ignoreList.Add(name + "#" + identD);
+            }
+        }
+
+        /// <summary>
+        /// Removes a specified user from the players ignore list.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="identD"></param>
+        public void RemoveIgnoredUser(string name, string identD = null)
+        {
+            if (identD == null)
+            {
+                ignoreList.Remove(name);
+            }
+            else if (identD != null)
+            {
+                ignoreList.Remove(name + "#" + identD);
+            }
+        }
+
+        /// <summary>
+        /// Checks if user is ignored, with optional for ident
+        /// </summary>
+        /// <param name="name">The name of the user.</param>
+        /// <param name="ident">The identD of the user. (Optional)</param>
+        /// <returns></returns>
+        public bool IsIgnored(string name, string identD = null)
+        {
+            if(identD == null)
+            {
+                if (ignoreList.Contains(name)) return ignoreList.Contains(name);
+            }
+            else if (identD != null)
+            {
+                if (ignoreList.Contains(name + "#" + identD)) return ignoreList.Contains(identD);
+            }
+            return false;
         }
 
         public void SwitchOn()

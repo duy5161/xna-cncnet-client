@@ -483,6 +483,15 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 playerContextMenu.Items[1].Text = "Add Friend";
             }
 
+            if (pmWindow.IsIgnored(userName))
+            {
+                playerContextMenu.Items[2].Text = "Unignore Player";
+            }
+            else
+            {
+                playerContextMenu.Items[2].Text = "Ignore Player";
+            }
+
             Point cursorPoint = GetCursorPoint();
 
             playerContextMenu.Enabled = true;
@@ -519,6 +528,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
 
             string userName = currentChatChannel.Users[lbPlayerList.SelectedIndex].IRCUser.Name;
+            string identD = null;
 
             switch (e.Index)
             {
@@ -533,7 +543,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
                     break;
                 case 2:
-                    pmWindow.Ignore(userName);
+                    pmWindow.Ignore(userName, identD);
                     break;
             }
         }
