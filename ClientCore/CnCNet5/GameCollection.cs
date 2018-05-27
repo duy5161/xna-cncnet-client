@@ -76,6 +76,17 @@ namespace ClientCore.CnCNet5
                     UIName = "Yuri's Revenge",
                     Texture = AssetLoader.TextureFromImage(Resources.yricon)
                 },
+                
+                  new CnCNetGame()
+                {
+                    ChatChannel = "#HOO",
+                    GameBroadcastChannel = "#cncnet-HOO-games",
+                    InternalName = "HOO",
+                    RegistryInstallPath = "HKCU\\Software\\Heartofophelix",
+                    UIName = "Heart of ophelix",
+                    AlwaysEnabled = true,
+                    Texture = AssetLoader.TextureFromImage(Resources.HOOicon)
+                }
 
                 new CnCNetGame()
                 {
